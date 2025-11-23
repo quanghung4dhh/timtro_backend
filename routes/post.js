@@ -1,21 +1,33 @@
 import express from "express";
 import fs from "fs";
 import multer from "multer";
+import { v2 as cloudinary } from "cloudinary";
+import { CloudinaryStorage } from "multer-storage-cloudinary";
+import dotenv from "dotenv";
+dotenv.config();
+
 
 const router = express.Router();
 
-// Cấu hình lưu file ảnh
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "./uploads");
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + "_" + file.originalname);
+const DATA_FILE = "./data/posts.json";
+
+// Cấu hình Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUD_NAME,
+  api_key: process.env.CLOUD_KEY,
+  api_secret: process.env.CLOUD_SECRET,
+});
+
+// Cấu hình multer để upload lên Cloudinary
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: "room_posts", // tên thư mục Cloudinary
+    format: async () => "jpg",
   },
 });
 
 const upload = multer({ storage });
-const DATA_FILE = "./data/posts.json";
 
 // API: tạo bài đăng mới
 router.post("/create-post", upload.array("images", 5), (req, res) => {
@@ -30,20 +42,21 @@ router.post("/create-post", upload.array("images", 5), (req, res) => {
     description,
   } = req.body;
 
-  const imagePaths = req.files.map((f) => f.filename);
+  // lấy URL ảnh từ Cloudinary
+  const imageUrls = req.files.map((f) => f.path);
 
   const newPost = {
     id: Date.now(),
     title,
-    price,
-    isNegotiable,
-    area,
+    price: parseFloat(price),
+    isNegotiable: isNegotiable === "true" || isNegotiable === true,
+    area: parseFloat(area),
     location,
-    bedrooms,
-    bathrooms,
+    bedrooms: parseInt(bedrooms),
+    bathrooms: parseInt(bathrooms),
     description,
-    images: imagePaths,
-    createdAt: new Date(),
+    images: imageUrls,
+    createdAt: new Date().toISOString(),
   };
 
   let data = [];
