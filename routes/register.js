@@ -1,44 +1,31 @@
 import express from "express";
-import fs from "fs";
-import path from "path";
+import User from "../models/User.js";
 
 const router = express.Router();
 
-// Tạo thư mục data nếu chưa tồn tại
-const dataFolder = path.join(process.cwd(), "data");
-if (!fs.existsSync(dataFolder)) {
-    fs.mkdirSync(dataFolder);
-}
+// API đăng ký (MongoDB)
+router.post("/register", async (req, res) => {
+  const { username, password } = req.body;
 
-// Đường dẫn file JSON lưu user
-const usersFilePath = path.join(dataFolder, "users.json");
+  if (!username || !password) {
+    return res.status(400).json({ message: "Thiếu username hoặc password" });
+  }
 
-// API đăng ký
-router.post("/register", (req, res) => {
-    const { username, password } = req.body;
-
-    if (!username || !password) {
-        return res.status(400).json({ message: "Thiếu username hoặc password" });
+  try {
+    // Kiểm tra tài khoản tồn tại
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
+      return res.status(400).json({ message: "Tài khoản đã tồn tại" });
     }
 
-    // Đọc dữ liệu user
-    let users = [];
-    if (fs.existsSync(usersFilePath)) {
-        users = JSON.parse(fs.readFileSync(usersFilePath, "utf-8") || "[]");
-    }
+    // Lưu user mới
+    const newUser = await User.create({ username, password });
 
-    // Kiểm tra trùng tài khoản
-    if (users.some((u) => u.username === username)) {
-        return res.status(400).json({ message: "Tài khoản đã tồn tại" });
-    }
-
-    // Thêm user mới
-    users.push({ username, password });
-
-    // Ghi lại file
-    fs.writeFileSync(usersFilePath, JSON.stringify(users, null, 2), "utf-8");
-
-    return res.json({ message: "Đăng ký thành công" });
+    return res.json({ message: "Đăng ký thành công", user: newUser });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Lỗi server" });
+  }
 });
 
 export default router;

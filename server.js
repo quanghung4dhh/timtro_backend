@@ -3,6 +3,7 @@ import cors from "cors";
 import registerRouter from "./routes/register.js";
 import loginRouter from "./routes/login.js";
 import postRouter from "./routes/post.js";
+import { connectDB } from "./database/db.js";
 import getRouter from "./get/get.js";
 
 const app = express();
@@ -11,6 +12,8 @@ const PORT = 3000;
 // Middlewares
 app.use(cors());
 app.use(express.json());
+
+connectDB();
 
 // Routes
 app.use("/api", registerRouter);

@@ -1,20 +1,9 @@
 import express from "express";
-import fs from "fs";
-import path from "path";
+import User from "../models/User.js";
 
 const router = express.Router();
 
-// Đường dẫn tới file users.json
-const dataFolder = path.join(process.cwd(), "data");
-if (!fs.existsSync(dataFolder)) {
-  fs.mkdirSync(dataFolder);
-}
-
-// Đường dẫn file JSON lưu user
-const usersFile = path.join(dataFolder, "users.json");
-
-// API đăng nhập
-router.post("/login", (req, res) => {
+router.post("/login", async (req, res) => {
   const { username, password } = req.body;
 
   // Kiểm tra input
@@ -22,26 +11,24 @@ router.post("/login", (req, res) => {
     return res.status(400).json({ message: "Thiếu username hoặc password" });
   }
 
-  // Đọc file JSON
-  const rawData = fs.readFileSync(usersFile);
-  const users = JSON.parse(rawData);
+  try {
+    // Tìm user trong MongoDB
+    const user = await User.findOne({ username, password });
 
-  // Tìm user trùng khớp
-  const user = users.find(
-    (u) => u.username === username && u.password === password
-  );
+    if (!user) {
+      return res.status(401).json({ message: "Sai tài khoản hoặc mật khẩu" });
+    }
 
-  if (!user) {
-    return res.status(401).json({ message: "Sai tài khoản hoặc mật khẩu" });
+    // Đăng nhập thành công
+    return res.json({
+      message: "Đăng nhập thành công",
+      user: { username: user.username },
+    });
+
+  } catch (err) {
+    console.error("Login error:", err);
+    return res.status(500).json({ message: "Lỗi server" });
   }
-
-  // Nếu thành công
-  return res.json({
-    message: "Đăng nhập thành công",
-    user: {
-      username: user.username,
-    },
-  });
 });
 
 export default router;
